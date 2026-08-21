@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+.env
+credentials.json
+token.json
+*.db
+*.sqlite
+*.sqlite3
+secrets/
+.idea/
