@@ -25,7 +25,7 @@ def sync_gmail(settings, session_factory) -> None:
         latest_email = latest_email.replace(tzinfo=timezone.utc)
     client = GmailClient.from_credentials(authenticate(settings.credentials_file, settings.token_file))
     ids = set()
-    queries = candidate_queries(latest_email)
+    queries = candidate_queries(latest_email, settings.excluded_mail_terms)
     if latest_email:
         print(f"Incremental sync: checking messages since {latest_email.date()}...", flush=True)
     else:
@@ -43,7 +43,7 @@ def sync_gmail(settings, session_factory) -> None:
     session = session_factory()
     try:
         print("Classifying and updating the local database...", flush=True)
-        ingest_messages(session, messages, RuleBasedClassifier(), settings.no_response_days)
+        ingest_messages(session, messages, RuleBasedClassifier(), settings.no_response_days, excluded_terms=settings.excluded_mail_terms)
         refresh_statuses(session, settings.no_response_days)
     finally:
         session.close()

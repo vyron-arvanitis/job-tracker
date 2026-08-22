@@ -16,6 +16,7 @@ class Settings:
     gmail_max_results: int = 500
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
+    excluded_mail_terms: tuple[str, ...] = ("lmu", "mpq", "studienberatung")
 
 
 def get_settings() -> Settings:
@@ -28,4 +29,5 @@ def get_settings() -> Settings:
         gmail_max_results=int(os.getenv("GMAIL_MAX_RESULTS", "500")),
         openai_api_key=os.getenv("OPENAI_API_KEY") or None,
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        excluded_mail_terms=tuple(term.strip() for term in os.getenv("EXCLUDED_MAIL_TERMS", "lmu,mpq,studienberatung").split(",") if term.strip()),
     )

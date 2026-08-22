@@ -4,13 +4,16 @@ from job_tracker.classifier.base import EmailInput
 from job_tracker.database.models import Application, Email
 from job_tracker.matching.application_matcher import find_application, normalize
 from job_tracker.services.status_resolver import next_action_for_status, resolve_status
+from job_tracker.services.filters import is_excluded_message
 
-def ingest_messages(session, messages, classifier, no_response_days=14, now=None):
+def ingest_messages(session, messages, classifier, no_response_days=14, now=None, excluded_terms=()):
     # Keep newly-created applications visible within this batch as well as in
     # the database. This prevents two messages in the same sync from racing
     # toward the same unique company/role key.
     pending_apps = {}
     for message in messages:
+        if is_excluded_message(message, excluded_terms):
+            continue
         if session.scalar(select(Email).where(Email.gmail_message_id == message.message_id)): continue
         result = classifier.classify(EmailInput(message.sender, message.subject, message.body_text, message.sent_at))
         if not result.is_job_related: continue
