@@ -21,6 +21,7 @@ def authenticate_gmail(settings) -> None:
 def sync_gmail(settings, session_factory) -> None:
     with session_factory() as session:
         latest_email = session.scalar(select(func.max(Email.sent_at)))
+        existing_message_ids = set(session.scalars(select(Email.gmail_message_id)))
     if latest_email and latest_email.tzinfo is None:
         latest_email = latest_email.replace(tzinfo=timezone.utc)
     client = GmailClient.from_credentials(authenticate(settings.credentials_file, settings.token_file))
@@ -33,12 +34,17 @@ def sync_gmail(settings, session_factory) -> None:
     for index, query in enumerate(queries, 1):
         print(f"Searching Gmail ({index}/{len(queries)})...", flush=True)
         ids.update(client.search_message_ids(query, settings.gmail_max_results))
-    print(f"Found {len(ids)} candidate messages.", flush=True)
+    new_ids = ids - existing_message_ids
+    print(
+        f"Found {len(ids)} candidate messages ({len(new_ids)} new; "
+        f"{len(ids) - len(new_ids)} already stored).",
+        flush=True,
+    )
     messages = []
-    for index, message_id in enumerate(ids, 1):
+    for index, message_id in enumerate(new_ids, 1):
         messages.append(client.fetch_message(message_id))
-        progress("Fetching messages", index, len(ids))
-    if ids:
+        progress("Fetching new messages", index, len(new_ids))
+    if new_ids:
         print(flush=True)
     session = session_factory()
     try:
@@ -47,7 +53,7 @@ def sync_gmail(settings, session_factory) -> None:
         refresh_statuses(session, settings.no_response_days)
     finally:
         session.close()
-    print(f"Synchronized {len(ids)} candidate messages.")
+    print(f"Synchronized {len(new_ids)} new messages.")
 
 
 def reclassify_stored_emails(settings, session_factory) -> None:

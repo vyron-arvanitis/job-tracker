@@ -370,6 +370,9 @@ def extract_company(sender: str, text: str) -> str | None:
 
 def extract_position(text: str) -> str | None:
     patterns = (
+        r"(?:interest in|applied for|application for|apply for|for)\s+(?:the|a|an)\s+([^\n.!?]{2,100}?)\s+(?:role|position|job)\b",
+        r"(?:the|a|an)\s+([^\n.!?]{2,100}?)\s+(?:role|position|job)\b",
+        r"(?:role|position|job)\s+(?:of|as)\s+([^\n.!?]{2,100})",
         r"(?:position|role|job|stelle)[:\s]+([^\n.!?]{3,100})",
         r"for the\s+([^\n.!?]{3,100})\s+position",
         r"für die Stelle als\s+([^\n.!?]{3,100})",

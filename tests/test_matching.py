@@ -27,6 +27,35 @@ def test_same_company_different_roles_remain_separate():
         assert len(session.query(Application).all()) == 2
 
 
+def test_different_roles_in_one_thread_remain_separate():
+    factory = make_session_factory("sqlite:///:memory:")
+    first = GmailMessage(
+        "1",
+        "same-thread",
+        "recruiting@mckinsey.com",
+        "me@example.com",
+        "Your McKinsey application",
+        datetime.now(timezone.utc),
+        "Dear Vyron, Thank you for your interest in the Associate role at McKinsey.",
+    )
+    second = GmailMessage(
+        "2",
+        "same-thread",
+        "recruiting@mckinsey.com",
+        "me@example.com",
+        "Your McKinsey application",
+        datetime.now(timezone.utc),
+        "Dear Vyron, Thank you for your interest in the Junior Associate role at McKinsey.",
+    )
+
+    with factory() as session:
+        ingest_messages(session, [first, second], RuleBasedClassifier())
+        assert sorted(app.position for app in session.query(Application).all()) == [
+            "Associate",
+            "Junior Associate",
+        ]
+
+
 def test_existing_unknown_position_is_reused_on_later_sync():
     factory = make_session_factory("sqlite:///:memory:")
     first = GmailMessage("1", "t1", "emails@efinancialcareers.com", "me@example.com", "Your application", datetime.now(timezone.utc), "Your application has been received")

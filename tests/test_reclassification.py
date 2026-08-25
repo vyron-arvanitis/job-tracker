@@ -85,3 +85,48 @@ def test_reclassify_detaches_stored_noise_from_job_pipeline():
         assert email.classification is None
         assert email.application_id is None
         assert session.query(Application).count() == 0
+
+
+def test_reclassify_splits_existing_same_thread_roles():
+    factory = make_session_factory("sqlite:///:memory:")
+    messages = [
+        GmailMessage(
+            "1",
+            "same-thread",
+            "recruiting@mckinsey.com",
+            "me@example.com",
+            "Your McKinsey application",
+            datetime(2026, 8, 1, tzinfo=timezone.utc),
+            "Dear Vyron, Thank you for your interest in the Associate role at McKinsey.",
+        ),
+        GmailMessage(
+            "2",
+            "same-thread",
+            "recruiting@mckinsey.com",
+            "me@example.com",
+            "Your McKinsey application",
+            datetime(2026, 8, 2, tzinfo=timezone.utc),
+            "Dear Vyron, Thank you for your interest in the Junior Associate role at McKinsey.",
+        ),
+    ]
+
+    class LegacyClassifier:
+        def classify(self, email: EmailInput) -> ClassificationResult:
+            return ClassificationResult(
+                True,
+                "Mckinsey",
+                "at McKinsey",
+                "application_received",
+                1.0,
+            )
+
+    with factory() as session:
+        ingest_messages(session, messages, LegacyClassifier())
+        assert session.query(Application).count() == 1
+
+        reclassify_emails(session, RuleBasedClassifier())
+
+        assert sorted(app.position for app in session.query(Application).all()) == [
+            "Associate",
+            "Junior Associate",
+        ]

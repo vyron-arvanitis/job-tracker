@@ -10,6 +10,17 @@ def test_technical_interview(): assert classify("We were impressed with your pro
 def test_german_rejection(): assert classify("Leider können wir Ihre Bewerbung im weiteren Auswahlverfahren nicht berücksichtigen.").event_type == "rejection"
 
 
+def test_role_before_role_at_company_is_extracted_without_company_suffix():
+    associate = classify(
+        "Dear Vyron, Thank you for your interest in the Associate role at McKinsey."
+    )
+    junior = classify(
+        "Dear Vyron, Thank you for your interest in the Junior Associate role at McKinsey."
+    )
+    assert associate.position == "Associate"
+    assert junior.position == "Junior Associate"
+
+
 def test_rejection_with_another_candidate_is_detected():
     assert (
         classify(

@@ -75,7 +75,8 @@ def reclassify_emails(session, classifier, no_response_days=14, now=None) -> tup
     """Re-run classification for all emails already stored locally.
 
     Gmail is not contacted and message IDs are not changed. Application
-    associations for genuine job emails remain stable. Messages that the
+    Associations are rebuilt for genuine job emails so two roles in the same
+    Gmail thread can become separate applications. Messages that the
     classifier identifies as non-job mail are detached from applications, and
     applications with no genuine job emails left are removed. The application
     fields derived from the remaining classifications are then rebuilt.
@@ -86,6 +87,7 @@ def reclassify_emails(session, classifier, no_response_days=14, now=None) -> tup
     attached_application_ids = {
         email.application_id for email in emails if email.application_id is not None
     }
+    pending_apps = {}
     changed = 0
     for email in emails:
         result = classifier.classify(
@@ -103,11 +105,29 @@ def reclassify_emails(session, classifier, no_response_days=14, now=None) -> tup
             email.application_id,
         )
         if result.is_job_related:
+            company = result.company or email.company or "Unknown company"
+            position = result.position or email.position or "Unknown position"
+            app_key = (normalize(company), normalize(position))
+            app = pending_apps.get(app_key) or find_application(
+                session, company, position, email.gmail_thread_id
+            )
+            if app is None:
+                app = Application(
+                    company=company,
+                    position=position,
+                    company_key=normalize(company),
+                    position_key=normalize(position),
+                    source=email.sender,
+                )
+                session.add(app)
+                session.flush()
+            pending_apps[app_key] = app
+            email.application = app
             new_values = (
                 result.event_type if result.event_type else None,
                 result.company,
                 result.position,
-                email.application_id,
+                app.id,
             )
         else:
             # Keep the raw email row for local audit/reclassification, but do
