@@ -10,7 +10,7 @@ from .gmail.auth import authenticate
 from .gmail.client import GmailClient
 from .gmail.search import candidate_queries
 from .reporting import create_status_chart, status_counts
-from .services.ingestion import ingest_messages, refresh_statuses
+from .services.ingestion import ingest_messages, reclassify_emails, refresh_statuses
 
 
 def authenticate_gmail(settings) -> None:
@@ -48,6 +48,17 @@ def sync_gmail(settings, session_factory) -> None:
     finally:
         session.close()
     print(f"Synchronized {len(ids)} candidate messages.")
+
+
+def reclassify_stored_emails(settings, session_factory) -> None:
+    """Reclassify stored email bodies using the current local rules."""
+    with session_factory() as session:
+        processed, changed = reclassify_emails(
+            session,
+            RuleBasedClassifier(),
+            settings.no_response_days,
+        )
+    print(f"Reclassified {changed} of {processed} stored emails.")
 
 
 def load_applications(session_factory):

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy import select
 from email.utils import parseaddr
 from job_tracker.classifier.base import EmailInput
@@ -5,6 +6,14 @@ from job_tracker.database.models import Application, Email
 from job_tracker.matching.application_matcher import find_application, normalize
 from job_tracker.services.status_resolver import next_action_for_status, resolve_status
 from job_tracker.services.filters import is_excluded_message
+
+
+def _utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 def ingest_messages(session, messages, classifier, no_response_days=14, now=None, excluded_terms=()):
     # Keep newly-created applications visible within this batch as well as in
@@ -20,19 +29,25 @@ def ingest_messages(session, messages, classifier, no_response_days=14, now=None
         company = result.company or "Unknown company"
         position = result.position or "Unknown position"
         app_key = (normalize(company), normalize(position))
-        app = pending_apps.get(app_key) or find_application(session, result.company, result.position, message.thread_id)
+        # Use the same fallback values for matching that are used when the
+        # application is created. Otherwise a classifier result with a missing
+        # position (or company) cannot find an existing "Unknown ..." row and
+        # the insert below violates uq_application_role.
+        app = pending_apps.get(app_key) or find_application(session, company, position, message.thread_id)
         if app is None:
             app = Application(company=company, position=position, company_key=normalize(company), position_key=normalize(position), source=message.sender)
             session.add(app); session.flush()
             pending_apps[app_key] = app
-        session.add(Email(gmail_message_id=message.message_id, gmail_thread_id=message.thread_id, application_id=app.id, sender=message.sender, recipients=message.recipients, subject=message.subject, sent_at=message.sent_at, body_text=message.body_text, classification=result.event_type, company=result.company, position=result.position, is_sent=message.is_sent)); session.flush()
+        email = Email(gmail_message_id=message.message_id, gmail_thread_id=message.thread_id, application=app, sender=message.sender, recipients=message.recipients, subject=message.subject, sent_at=message.sent_at, body_text=message.body_text, classification=result.event_type, company=result.company, position=result.position, is_sent=message.is_sent)
+        session.add(email); session.flush()
         if not message.is_sent:
             contact = parseaddr(message.sender)[1]
             if contact:
                 app.contact_email = contact
         all_events = [(e.sent_at, e.classification) for e in app.emails if e.classification]
-        app.applied_date = min((e.sent_at for e in app.emails if e.classification == "application_received"), default=app.applied_date)
-        app.last_contact_date = max(e.sent_at for e in app.emails)
+        application_dates = [e.sent_at for e in app.emails if e.classification == "application_received"]
+        app.applied_date = min(application_dates, key=_utc, default=app.applied_date)
+        app.last_contact_date = max((e.sent_at for e in app.emails), key=_utc)
         if not app.status_override:
             resolved = resolve_status(all_events, app.applied_date, now, no_response_days)
             app.status = resolved.value
@@ -54,3 +69,52 @@ def refresh_statuses(session, no_response_days=14, now=None):
         app.status = status.value
         app.next_action = next_action_for_status(status)
     session.commit()
+
+
+def reclassify_emails(session, classifier, no_response_days=14, now=None) -> tuple[int, int]:
+    """Re-run classification for all emails already stored locally.
+
+    Gmail is not contacted and message IDs are not changed. Application
+    associations remain stable; only the stored classification and the
+    classifier-derived email metadata are replaced. The application fields
+    derived from those classifications are then rebuilt.
+
+    Returns ``(processed, changed)``.
+    """
+    emails = list(session.scalars(select(Email).order_by(Email.id)))
+    changed = 0
+    for email in emails:
+        result = classifier.classify(
+            EmailInput(
+                email.sender,
+                email.subject,
+                email.body_text or "",
+                email.sent_at,
+            )
+        )
+        new_values = (
+            result.event_type if result.is_job_related else None,
+            result.company if result.is_job_related else None,
+            result.position if result.is_job_related else None,
+        )
+        old_values = (email.classification, email.company, email.position)
+        if old_values != new_values:
+            changed += 1
+        email.classification, email.company, email.position = new_values
+
+    for app in session.scalars(select(Application)):
+        application_dates = [
+            email.sent_at
+            for email in app.emails
+            if email.classification == "application_received"
+        ]
+        app.applied_date = min(application_dates, key=_utc, default=None)
+        app.last_contact_date = max(
+            (email.sent_at for email in app.emails),
+            key=_utc,
+            default=None,
+        )
+
+    session.flush()
+    refresh_statuses(session, no_response_days, now)
+    return len(emails), changed

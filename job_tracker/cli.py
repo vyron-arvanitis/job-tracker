@@ -1,6 +1,6 @@
 import argparse
 
-from .commands import authenticate_gmail, export_applications, generate_chart, list_applications, show_stats, sync_gmail
+from .commands import authenticate_gmail, export_applications, generate_chart, list_applications, reclassify_stored_emails, show_stats, sync_gmail
 from .config import get_settings
 from .database.session import make_session_factory
 
@@ -10,6 +10,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("auth", help="Authenticate with Gmail")
     sub.add_parser("sync", help="Fetch and process recruiting emails")
+    sub.add_parser("reclassify", help="Re-run classification for stored emails")
     sub.add_parser("stats", help="Show application status counts")
     listing = sub.add_parser("list", help="List applications")
     listing.add_argument("--status")
@@ -29,6 +30,8 @@ def main(argv=None):
     factory = make_session_factory(settings.database_url)
     if args.command == "sync":
         sync_gmail(settings, factory)
+    elif args.command == "reclassify":
+        reclassify_stored_emails(settings, factory)
     elif args.command == "list":
         list_applications(factory, args.status)
     elif args.command == "stats":
@@ -37,4 +40,3 @@ def main(argv=None):
         export_applications(factory, args.path)
     elif args.command == "chart":
         generate_chart(factory, args.output)
-

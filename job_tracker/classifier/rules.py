@@ -4,7 +4,7 @@ import re
 
 from .base import ClassificationResult, EmailClassifier, EmailInput
 
-_REJECTION = re.compile(r"unfortunately|regret to inform|not proceed|leider|absage|nicht berücksichtigen|rejected", re.I)
+_REJECTION = re.compile(r"unfortunately|regret to inform|other candidates|not proceed|leider|absage|nicht berücksichtigen|rejected", re.I)
 _OFFER = re.compile(
     r"\b(?:pleased to offer|offer letter|job offer|employment offer)\b|"
     r"\b(?:vertragsangebot|arbeitsangebot|wir freuen uns, Ihnen .* anbieten)\b",

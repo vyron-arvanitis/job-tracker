@@ -25,3 +25,14 @@ def test_same_company_different_roles_remain_separate():
         second = GmailMessage("2", "t2", "recruiter@pwc.com", "me@example.com", "Thank you for applying", datetime.now(timezone.utc), "Thank you for applying for the Data & Analytics position")
         ingest_messages(session, [first, second], RuleBasedClassifier())
         assert len(session.query(Application).all()) == 2
+
+
+def test_existing_unknown_position_is_reused_on_later_sync():
+    factory = make_session_factory("sqlite:///:memory:")
+    first = GmailMessage("1", "t1", "emails@efinancialcareers.com", "me@example.com", "Your application", datetime.now(timezone.utc), "Your application has been received")
+    second = GmailMessage("2", "t2", "emails@efinancialcareers.com", "me@example.com", "Application update", datetime.now(timezone.utc), "We have an update on your application")
+    with factory() as session:
+        ingest_messages(session, [first], RuleBasedClassifier())
+        ingest_messages(session, [second], RuleBasedClassifier())
+        assert len(session.query(Application).all()) == 1
+        assert len(session.query(Email).all()) == 2
