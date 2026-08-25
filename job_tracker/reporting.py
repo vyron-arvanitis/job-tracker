@@ -50,6 +50,22 @@ def status_counts(applications) -> Counter:
     return Counter(application.status for application in applications)
 
 
+def cumulative_applied_count(applications) -> int:
+    """Count tracked applications regardless of their current stage.
+
+    Current statuses are mutually exclusive, but reaching a later stage or
+    closing an application does not mean it was never applied to.
+    """
+    return len(applications)
+
+
+def status_label(status: str) -> str:
+    """Return a user-facing label for a current status."""
+    if status == ApplicationStatus.APPLIED.value:
+        return "Awaiting response"
+    return status.replace("_", " ").title()
+
+
 def create_status_chart(
     applications,
     output_path: str | Path = "applications_status.png",
@@ -57,6 +73,7 @@ def create_status_chart(
 
     counts = status_counts(applications)
     total = len(applications)
+    applied = cumulative_applied_count(applications)
 
     if not total:
         raise ValueError(
@@ -89,8 +106,6 @@ def create_status_chart(
             ApplicationStatus.FINAL_INTERVIEW.value,
         }
     )
-
-    offers = counts.get(ApplicationStatus.OFFER.value, 0)
 
     # ------------------------------------------------------------
     # Theme
@@ -251,7 +266,7 @@ def create_status_chart(
     panel.text(
         0,
         1.03,
-        "STATUS BREAKDOWN",
+        "CURRENT STATUS",
         fontsize=9,
         fontweight="bold",
         color=secondary,
@@ -289,7 +304,7 @@ def create_status_chart(
         panel.text(
             0.10,
             y,
-            label.replace("_", " ").title(),
+            status_label(label),
             fontsize=10,
             fontweight="medium",
             color=primary,
@@ -324,9 +339,9 @@ def create_status_chart(
     # ------------------------------------------------------------
 
     kpis = [
+        ("APPLIED", applied, "all stages"),
         ("ACTIVE", ongoing, "currently open"),
         ("INTERVIEWS", interviews, "in pipeline"),
-        ("OFFERS", offers, "received"),
         ("CLOSED", closed, "finished"),
     ]
 

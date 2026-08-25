@@ -42,7 +42,7 @@ python -m job_tracker list --status rejected
 # List follow-up candidates, including the recruiter contact email when known.
 python -m job_tracker list --status no_response
 
-# Show counts grouped by current status.
+# Show cumulative applications and counts grouped by current status.
 python -m job_tracker stats
 
 # Export the current application tracker as CSV.
@@ -63,7 +63,7 @@ python -m job_tracker chart --output reports/application_status.png
 
 Supported statuses include `applied`, `no_response`, `hr_interview`, `technical_interview`, `assessment`, `final_interview`, `rejected`, `offer`, `withdrawn`, and `unknown`. Generic words such as `Stellenangebot` or `Jobangebote` are not treated as an employment offer.
 
-The `chart` command creates a local `applications_status.png` donut chart with the total application count, ongoing applications, closed applications, and a breakdown by status. It does not send any data externally.
+The `chart` command creates a local `applications_status.png` donut chart with the cumulative applied count, ongoing applications, closed applications, and a current-status breakdown. `No response` and later stages are included in the cumulative applied count; the status breakdown remains mutually exclusive. It does not send any data externally.
 
 To use a different database, token location, or no-response threshold, edit `.env`:
 

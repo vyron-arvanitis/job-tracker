@@ -9,7 +9,7 @@ from .database.models import Application, Email
 from .gmail.auth import authenticate
 from .gmail.client import GmailClient
 from .gmail.search import candidate_queries
-from .reporting import create_status_chart, status_counts
+from .reporting import cumulative_applied_count, create_status_chart, status_counts, status_label
 from .services.ingestion import ingest_messages, reclassify_emails, refresh_statuses
 
 
@@ -78,8 +78,10 @@ def show_stats(session_factory) -> None:
     applications = load_applications(session_factory)
     counts = status_counts(applications)
     print(f"Total applications: {len(applications)}")
+    print(f"Applied (all stages): {cumulative_applied_count(applications)}")
+    print("Current status:")
     for status, count in sorted(counts.items()):
-        print(f"{status.replace('_', ' ').title()}: {count}")
+        print(f"{status_label(status)}: {count}")
 
 
 def export_applications(session_factory, output_path: str) -> None:
