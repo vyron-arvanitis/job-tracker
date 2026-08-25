@@ -59,7 +59,7 @@ python -m job_tracker chart --output reports/application_status.png
 
 `sync` searches likely recruiting terms in Gmail, including Sent mail, fetches only matching messages, stores Gmail message IDs for idempotency, and associates messages using thread ID and normalized company/position. The first sync checks Gmail history; later syncs use the newest stored email timestamp and search only newer mail with a one-day overlap. Existing Gmail IDs are skipped, so the overlap is safe. Existing applications are updated when new messages arrive. The tracker also stores the latest recruiter-side contact email when available. Rule classification supports common English and German terms. `no_response` is derived after `NO_RESPONSE_DAYS` only when no later process event exists.
 
-`reclassify` applies the current local rules to every email body already stored in SQLite, updates changed classifications, and recomputes application statuses. It does not access Gmail. Email-to-application associations remain unchanged.
+`reclassify` applies the current local rules to every email body already stored in SQLite and recomputes application statuses. It does not access Gmail. Messages identified as newsletters, university/course notices, account/security mail, or other non-job mail are detached from applications; applications with no genuine job emails left are removed. The raw email rows remain local so the rules can be improved and rerun later.
 
 Supported statuses include `applied`, `no_response`, `hr_interview`, `technical_interview`, `assessment`, `final_interview`, `rejected`, `offer`, `withdrawn`, and `unknown`. Generic words such as `Stellenangebot` or `Jobangebote` are not treated as an employment offer.
 

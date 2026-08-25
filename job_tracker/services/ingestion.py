@@ -75,13 +75,17 @@ def reclassify_emails(session, classifier, no_response_days=14, now=None) -> tup
     """Re-run classification for all emails already stored locally.
 
     Gmail is not contacted and message IDs are not changed. Application
-    associations remain stable; only the stored classification and the
-    classifier-derived email metadata are replaced. The application fields
-    derived from those classifications are then rebuilt.
+    associations for genuine job emails remain stable. Messages that the
+    classifier identifies as non-job mail are detached from applications, and
+    applications with no genuine job emails left are removed. The application
+    fields derived from the remaining classifications are then rebuilt.
 
     Returns ``(processed, changed)``.
     """
     emails = list(session.scalars(select(Email).order_by(Email.id)))
+    attached_application_ids = {
+        email.application_id for email in emails if email.application_id is not None
+    }
     changed = 0
     for email in emails:
         result = classifier.classify(
@@ -92,17 +96,39 @@ def reclassify_emails(session, classifier, no_response_days=14, now=None) -> tup
                 email.sent_at,
             )
         )
-        new_values = (
-            result.event_type if result.is_job_related else None,
-            result.company if result.is_job_related else None,
-            result.position if result.is_job_related else None,
+        old_values = (
+            email.classification,
+            email.company,
+            email.position,
+            email.application_id,
         )
-        old_values = (email.classification, email.company, email.position)
+        if result.is_job_related:
+            new_values = (
+                result.event_type if result.event_type else None,
+                result.company,
+                result.position,
+                email.application_id,
+            )
+        else:
+            # Keep the raw email row for local audit/reclassification, but do
+            # not leave newsletters, university notices, or account messages
+            # in the job pipeline.
+            new_values = (None, None, None, None)
+            email.application = None
         if old_values != new_values:
             changed += 1
-        email.classification, email.company, email.position = new_values
+        email.classification, email.company, email.position = new_values[:3]
 
-    for app in session.scalars(select(Application)):
+    # Remove rows created by the old broad classifier when every attached
+    # message has now been identified as non-job mail.
+    applications = list(session.scalars(select(Application)))
+    for app in applications:
+        if app.id in attached_application_ids and not app.emails:
+            session.delete(app)
+
+    for app in applications:
+        if app in session.deleted:
+            continue
         application_dates = [
             email.sent_at
             for email in app.emails
