@@ -8,6 +8,7 @@ def classify(text, sender="recruiter@unit8.com", subject=""):
 def test_application_received(): assert classify("Thank you for applying for the Software Engineer position.").event_type == "application_received"
 def test_technical_interview(): assert classify("We were impressed with your profile and would like to invite you to a technical interview.").event_type == "technical_interview"
 def test_german_rejection(): assert classify("Leider können wir Ihre Bewerbung im weiteren Auswahlverfahren nicht berücksichtigen.").event_type == "rejection"
+def test_german_phone_interview_is_hr_interview(): assert classify("Um uns besser kennenzulernen, möchte ich gerne ein kurzes Telefoninterview mit dir führen. Mein Terminvorschlag wäre Mittwoch.").event_type == "hr_interview"
 
 
 def test_role_before_role_at_company_is_extracted_without_company_suffix():
