@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-SEARCH_TERMS = ["application", "applied", "thank you for applying", "application received", "your application", "candidate", "recruiting", "recruiter", "talent acquisition", "interview", "technical interview", "coding interview", "assessment", "next step", "offer", "unfortunately", "regret to inform", "Bewerbung", "Bewerbung erhalten", "Vorstellungsgespräch", "Gespräch", "nächster Schritt", "Absage", "leider", "Stellenangebot", "Karriere"]
+SEARCH_TERMS = ["application", "applied", "thank you for applying", "application received", "your application", "candidate", "recruiting", "recruiter", "talent acquisition", "interview", "technical interview", "coding interview", "assessment", "next step", "offer", "unfortunately", "regret to inform", "Bewerbung", "Bewerbung erhalten", "Vorstellungsgespräch", "Gespräch", "nächster Schritt", "Absage", "leider", "Stellenangebot", "Karriere", "candidature", "candidat", "recrutement", "postuler", "retenus", "profil recherché"]
 
 def candidate_queries(since: datetime | None = None, excluded_terms: tuple[str, ...] = ()) -> list[str]:
     terms = " OR ".join(f'"{term}"' for term in SEARCH_TERMS)

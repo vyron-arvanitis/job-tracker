@@ -8,6 +8,31 @@ def classify(text, sender="recruiter@unit8.com", subject=""):
 def test_application_received(): assert classify("Thank you for applying for the Software Engineer position.").event_type == "application_received"
 def test_technical_interview(): assert classify("We were impressed with your profile and would like to invite you to a technical interview.").event_type == "technical_interview"
 def test_german_rejection(): assert classify("Leider können wir Ihre Bewerbung im weiteren Auswahlverfahren nicht berücksichtigen.").event_type == "rejection"
+def test_german_rejection_when_continuing_with_other_candidates():
+    result = classify(
+        "Wir haben deine Unterlagen mit grossem Interesse studiert. Nach "
+        "sorgfältiger Überlegung haben wir uns entschieden, für diese Position "
+        "mit anderen Kandidatinnen und Kandidaten weiterzufahren, deren "
+        "Erfahrungen und Kompetenzen unserem Wunschprofil noch näher kommen.",
+        sender="Kerstin Wessel <recruiting@css.ch>",
+        subject="Deine Bewerbung bei der CSS",
+    )
+    assert result.event_type == "rejection"
+
+
+def test_german_rejection_with_other_applicants_variant():
+    assert classify("Wir fahren mit anderen Bewerberinnen und Bewerbern weiter.").event_type == "rejection"
+
+
+def test_position_is_extracted_from_application_subject():
+    result = classify(
+        "The application was unsuccessful.",
+        subject="Update on your application for Shopware Backend Entwickler*in (m/w/d)",
+    )
+    assert result.position == "Shopware Backend Entwickler*in (m/w/d)"
+
+
+def test_french_rejection(): assert classify("D'autres candidats plus proches du profil recherché par notre client ont été retenus.", sender="Olivier <noreply@academicwork.com>", subject="Merci pour votre candidature!").event_type == "rejection"
 def test_german_phone_interview_is_hr_interview(): assert classify("Um uns besser kennenzulernen, möchte ich gerne ein kurzes Telefoninterview mit dir führen. Mein Terminvorschlag wäre Mittwoch.").event_type == "hr_interview"
 
 

@@ -169,6 +169,11 @@ REJECTION = rx(
     r"won['’]t be moving forward",
     r"we will not be proceeding with your application",
     r"müssen wir ihnen leider mitteilen",
+    # German/Swiss German rejection wording: the employer is continuing with
+    # other candidates for the position (often written inclusively).
+    r"(?:für (?:diese|die) position\s+)?mit anderen kandidaten weiter(?:zufahren|fahren|zumachen|zugehen)?",
+    r"mit anderen kandidat(?:innen und kandidaten|innen|en) weiter(?:zufahren|fahren|zumachen|zugehen)?",
+    r"mit anderen bewerber(?:innen und bewerbern|innen|n) weiter(?:zufahren|fahren|zumachen|zugehen)?",
     r"leider.{0,180}(?:nicht weiter berücksichtigen|nicht berücksichtigen|keine positive|keine möglichkeit|anderen kandidaten|anderen bewerber)",
     r"nicht weiter berücksichtigen",
     r"nicht in die engere auswahl",
@@ -179,6 +184,12 @@ REJECTION = rx(
     r"we.re closing it",
     r"nicht für (?:den|die) nächsten schritt",
     r"nicht weiterverfolgen",
+    r"d'autres candidats.{0,140}(?:retenus|sélectionnés)",
+    r"autres candidats.{0,140}(?:retenus|sélectionnés)",
+    r"candidature.{0,120}(?:n'est pas|n.a pas) été retenue",
+    r"candidature.{0,120}(?:non retenue|négative)",
+    r"(?:ne|nous ne) donnerons pas suite à votre candidature",
+    r"profil.{0,100}ne correspond pas",
 )
 
 OFFER = rx(
@@ -329,6 +340,13 @@ JOB_RELATED = rx(
     r"\btrainee\b",
     r"arbeitszeugnis",
     r"bewerbungsprozess",
+    r"\bcandidature\b",
+    r"\bcandidatures\b",
+    r"\bcandidat\b",
+    r"\bcandidats\b",
+    r"\brecrutement\b",
+    r"\bpostuler\b",
+    r"profil recherché",
 )
 
 # Terse replies from these domains are still part of a recruiting thread. All
@@ -373,6 +391,7 @@ def extract_company(sender: str, text: str) -> str | None:
 
 def extract_position(text: str) -> str | None:
     patterns = (
+        r"(?:application for|bewerbung als|bewerbung für)\s+([^\n.!?]{2,120})",
         r"(?:interest in|applied for|application for|apply for|for)\s+(?:the|a|an)\s+([^\n.!?]{2,100}?)\s+(?:role|position|job)\b",
         r"(?:the|a|an)\s+([^\n.!?]{2,100}?)\s+(?:role|position|job)\b",
         r"(?:role|position|job)\s+(?:of|as)\s+([^\n.!?]{2,100})",
